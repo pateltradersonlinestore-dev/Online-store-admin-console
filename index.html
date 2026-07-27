@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PT Admin | Master Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        zinc: {
+                            50: '#fafafa',
+                            100: '#f4f4f5',
+                            200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            400: '#a1a1aa',
+                            500: '#71717a',
+                            600: '#52525b',
+                            700: '#3f3f46',
+                            800: '#27272a',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fafafa; color: #09090b; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.02em; }
+        
+        /* Layout */
+        .sidebar { width: 260px; height: 100vh; position: fixed; left: 0; top: 0; background: #ffffff; border-right: 1px solid #e4e4e7; padding: 24px 16px; transition: transform 0.3s ease; z-index: 100; overflow-y: auto; }
+        .main-content { margin-left: 260px; padding: 32px 48px; transition: margin 0.3s ease; min-height: 100vh; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(9, 9, 11, 0.2); z-index: 90; opacity: 0; transition: opacity 0.2s; }
+        
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .sidebar-overlay.active { display: block; opacity: 1; backdrop-filter: blur(2px); }
+            .main-content { margin-left: 0; padding: 24px 16px; padding-bottom: 80px; }
+        }
+
+        /* Navigation */
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #52525b; transition: all 0.2s; margin-bottom: 4px; width: 100%; text-align: left; }
+        .nav-link.active { background: #f4f4f5; color: #09090b; font-weight: 600; }
+        @media (min-width: 1024px) { .nav-link:hover:not(.active) { background: #fafafa; color: #18181b; } }
+
+        /* Forms */
+        .admin-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e4e4e7; background: #ffffff; color: #09090b; font-size: 14px; transition: all 0.2s; outline: none; }
+        .admin-input:focus { border-color: #09090b; box-shadow: 0 0 0 1px #09090b; }
+        .admin-input::placeholder { color: #a1a1aa; }
+        
+        .upload-zone { border: 1px dashed #d4d4d8; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+        .upload-zone:hover { border-color: #09090b; background: #f4f4f5; }
+        
+        /* Modals */
+        .modal { display:none; position:fixed; inset:0; background:rgba(9, 9, 11, 0.4); z-index:200; align-items:center; justify-content:center; padding: 16px; opacity: 0; transition: opacity 0.2s ease; backdrop-filter: blur(2px); }
+        .modal.active { display:flex; opacity: 1; }
+        .modal-content { transform: scale(0.98) translateY(10px); opacity: 0; transition: all 0.3s ease; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border: 1px solid #e4e4e7; }
+        .modal.active .modal-content { transform: scale(1) translateY(0); opacity: 1; }
+
+        /* Utilities */
+        .hidden-view { display: none !important; }
+        .table-wrapper { overflow-x: auto; border: 1px solid #e4e4e7; border-radius: 12px; background: #ffffff; }
+        
+        table { width: 100%; text-align: left; border-collapse: collapse; font-size: 14px; }
+        th { padding: 12px 16px; font-weight: 500; color: #52525b; border-bottom: 1px solid #e4e4e7; background: #fafafa; white-space: nowrap; font-size: 13px; }
+        td { padding: 16px; border-bottom: 1px solid #f4f4f5; color: #18181b; }
+        tr:last-child td { border-bottom: none; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; display: inline-block; white-space: nowrap; border: 1px solid transparent; }
+        .status-pending { background: #fffbeb; color: #b45309; border-color: #fef3c7; }
+        .status-processing { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
+        .status-delivered { background: #f0fdf4; color: #15803d; border-color: #dcfce7; }
+        .status-cancelled { background: #fef2f2; color: #b91c1c; border-color: #fee2e2; }
+
+        /* Loading & Toast */
+        .loading-overlay { display:none; position:fixed; top: 24px; right: 24px; background:#ffffff; z-index:9999; align-items:center; gap: 12px; padding: 10px 16px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e4e4e7; font-size: 14px; font-weight: 500; }
+        
+        #toast-container { position: fixed; bottom: 24px; right: 24px; left: auto; top: auto; transform: translateY(100px); z-index: 9999; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; width: auto; max-width: 400px; }
+        #toast-container.show { transform: translateY(0); pointer-events: auto; }
+        @media (max-width: 600px) {
+            #toast-container { bottom: auto; top: 24px; left: 50%; right: auto; transform: translateX(-50%) translateY(-100px); width: 90%; }
+            #toast-container.show { transform: translateX(-50%) translateY(0); }
+        }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Print & Lock */
+        #printSection { display: none; }
+        @media print {
+            body > *:not(#printSection) { display: none !important; }
+            #printSection { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: white; }
+        }
+
+        #adminLockScreen { position: fixed; inset: 0; background: #fafafa; z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.3s; padding: 24px; }
+        .lock-card { background: #ffffff; padding: 48px 32px; border-radius: 16px; border: 1px solid #e4e4e7; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .lock-input { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #e4e4e7; text-align: center; font-size: 20px; font-weight: 600; letter-spacing: 8px; margin-bottom: 24px; outline: none; transition: 0.2s; }
+        .lock-input:focus { border-color: #09090b; box-shadow: 0 0 0 1px #09090b; }
+        .error-msg { color: #dc2626; font-size: 13px; font-weight: 500; margin-bottom: 16px; min-height: 20px; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body>
+
+    <!-- 🔒 MASTER SECURITY LOCK -->
+    <div id="adminLockScreen">
+        <div class="lock-card">
+            <div class="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-lock text-xl text-zinc-900"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2 text-zinc-900">Restricted Access</h2>
+            <p class="text-zinc-500 text-sm mb-8">Please enter your administrator PIN</p>
+            <div id="lockoutMsg" class="error-msg"></div>
+            <input type="password" inputmode="numeric" id="adminPasscode" class="lock-input" placeholder="••••" onkeypress="if(event.key === 'Enter') checkPasscode()">
+            <button onclick="checkPasscode()" id="unlockBtn" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-3.5 px-4 rounded-8px transition-colors rounded-lg flex justify-center items-center gap-2">
+                Unlock Workspace
+            </button>
+        </div>
+    </div>
+
+    <!-- 🔥 CRASH-PROOF PRINT SECTION -->
+    <div id="printSection"></div>
+
+    <!-- 🔥 Custom Shandar Toast -->
+    <div id="toast-container">
+        <div class="bg-zinc-900 text-white rounded-lg p-4 flex items-center gap-3 w-full shadow-lg">
+            <div id="toast-icon" class="text-lg"></div>
+            <div class="flex-1">
+                <p id="toast-title" class="font-semibold text-sm hidden"></p>
+                <p id="toast-msg" class="text-sm font-medium"></p>
+            </div>
+            <button onclick="hideToast()" class="text-zinc-400 hover:text-white transition-colors"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <!-- 🔄 Fixed Non-Blocking Loading Indicator -->
+    <div id="loading" class="loading-overlay">
+        <i class="fas fa-spinner fa-spin text-zinc-900"></i>
+        <span id="loadMsg" class="text-zinc-900">Syncing...</span>
+    </div>
+
+    <!-- 📱 Mobile Overlay & Header -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="lg:hidden bg-white border-b border-zinc-200 p-4 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <span class="font-display font-bold text-lg text-zinc-900">PT ADMIN</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="silentSync()" class="w-9 h-9 flex items-center justify-center bg-zinc-100 text-zinc-600 rounded-md"><i class="fas fa-sync-alt text-xs"></i></button>
+            <button onclick="toggleSidebar()" class="w-9 h-9 flex items-center justify-center bg-zinc-100 text-zinc-900 rounded-md"><i class="fas fa-bars"></i></button>
+        </div>
+    </div>
+
+    <!-- 🏰 Sidebar Navigation -->
+    <div class="sidebar flex flex-col" id="sidebar">
+        <div class="mb-10 px-2 mt-2 lg:mt-0">
+            <h1 class="text-xl font-display font-bold tracking-tight text-zinc-900">Patel Traders</h1>
+            <p class="text-xs text-zinc-500 mt-1 font-medium">Administration</p>
+        </div>
+
+        <nav class="space-y-1 flex-1">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-link active"><i class="fas fa-layer-group w-5 text-center"></i> Overview</button>
+            <button onclick="switchTab('inventory')" id="nav-inventory" class="nav-link"><i class="fas fa-box w-5 text-center"></i> Catalog</button>
+            <button onclick="switchTab('stock')" id="nav-stock" class="nav-link"><i class="fas fa-archive w-5 text-center"></i> Stock</button>
+            <button onclick="switchTab('orders')" id="nav-orders" class="nav-link"><i class="fas fa-shopping-cart w-5 text-center"></i> Orders</button>
+            <button onclick="switchTab('users')" id="nav-users" class="nav-link"><i class="fas fa-users w-5 text-center"></i> Customers <span id="userCountBadge" class="ml-auto bg-zinc-200 text-zinc-800 py-0.5 px-2 rounded-md text-[10px] font-semibold">0</span></button>
+            <button onclick="switchTab('broadcast')" id="nav-broadcast" class="nav-link"><i class="fas fa-bullhorn w-5 text-center"></i> Broadcasts</button>
+        </nav>
+        
+        
+        <div class="pt-4 border-t border-zinc-200 mt-auto flex flex-col gap-2">
+            <button onclick="silentSync()" class="nav-link text-zinc-600 hover:text-zinc-900 justify-center"><i class="fas fa-sync-alt text-xs"></i> Sync</button>
+            <div class="flex justify-center gap-3 text-[10px] text-zinc-400 font-medium px-2 pb-2">
+                <a href="terms.html" class="hover:text-zinc-600 transition-colors">Terms</a>
+                <span>&bull;</span>
+                <a href="privacy.html" class="hover:text-zinc-600 transition-colors">Privacy Policy</a>
+            </div>
+        </div>
+    
+    </div>
+
+    <!-- 🖥️ Main Content Area -->
+    <div class="main-content">
+        
+        <!-- 📊 TAB: DASHBOARD -->
+        <section id="view-dashboard" class="fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl font-display font-semibold text-zinc-900">Overview</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Monitor your store metrics and recent activities.</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-5 border border-zinc-200 rounded-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-sm font-medium text-zinc-500">Products</p>
+                        <i class="fas fa-box text-zinc-400"></i>
+                    </div>
+                    <h3 id="stat-products" class="text-3xl font-display font-semibold text-zinc-900">0</h3>
+                </div>
+                <div class="bg-white p-5 border border-zinc-200 rounded-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-sm font-medium text-zinc-500">Pending Orders</p>
+                        <i class="fas fa-clock text-zinc-400"></i>
+                    </div>
+                    <h3 id="stat-orders" class="text-3xl font-display font-semibold text-zinc-900">0</h3>
+                </div>
+                <div class="bg-white p-5 border border-zinc-200 rounded-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-sm font-medium text-zinc-500">Customers</p>
+                        <i class="fas fa-users text-zinc-400"></i>
+                    </div>
+                    <h3 id="stat-users" class="text-3xl font-display font-semibold text-zinc-900">0</h3>
+                </div>
+                <div class="bg-white p-5 border border-zinc-200 rounded-xl">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-sm font-medium text-zinc-500">Revenue (₹)</p>
+                        <i class="fas fa-wallet text-zinc-400"></i>
+                    </div>
+                    <h3 id="stat-revenue" class="text-3xl font-display font-semibold text-zinc-900">0</h3>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-display font-semibold mb-4 text-zinc-900">Recent Orders</h3>
+            <div class="table-wrapper">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Order Details</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentOrdersTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 🛋️ TAB: INVENTORY -->
+        <section id="view-inventory" class="hidden-view fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl font-display font-semibold text-zinc-900">Catalog</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Manage your product listings.</p>
+                </div>
+                
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <i class="fas fa-search absolute left-3 top-3 text-zinc-400 text-sm"></i>
+                        <input type="text" id="searchInventory" onkeyup="searchInventoryGrid()" placeholder="Search products..." class="admin-input pl-9">
+                    </div>
+                    <!-- Management Options for Category -->
+                    <button onclick="openManageCategoryModal()" class="bg-white border border-zinc-200 text-zinc-700 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors whitespace-nowrap">
+                        Manage Categories
+                    </button>
+                    <button onclick="openAddModal()" class="bg-zinc-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors whitespace-nowrap">
+                        Add Product
+                    </button>
+                </div>
+            </div>
+            <div id="inventoryGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+        </section>
+
+        <!-- 📦 TAB: STOCK MANAGEMENT -->
+        <section id="view-stock" class="hidden-view fade-in">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl font-display font-semibold text-zinc-900">Stock Control</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Manage inventory levels and product visibility.</p>
+                </div>
+                
+                <div class="relative w-full md:w-64">
+                    <i class="fas fa-search absolute left-3 top-3 text-zinc-400 text-sm"></i>
+                    <input type="text" id="searchStock" onkeyup="searchStockTable()" placeholder="Search stock..." class="admin-input pl-9">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4">
+                    <div class="w-10 h-10 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-600"><i class="fas fa-check"></i></div>
+                    <div><p class="text-xs font-medium text-zinc-500 uppercase">In Stock</p><h3 id="stock-active" class="text-2xl font-display font-semibold text-zinc-900">0</h3></div>
+                </div>
+                <div class="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4">
+                    <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600"><i class="fas fa-times"></i></div>
+                    <div><p class="text-xs font-medium text-zinc-500 uppercase">Out of Stock</p><h3 id="stock-out" class="text-2xl font-display font-semibold text-zinc-900">0</h3></div>
+                </div>
+                <div class="bg-white border border-zinc-200 p-4 rounded-xl flex items-center gap-4">
+                    <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-600"><i class="fas fa-clock"></i></div>
+                    <div><p class="text-xs font-medium text-zinc-500 uppercase">Incoming</p><h3 id="stock-incoming" class="text-2xl font-display font-semibold text-zinc-900">0</h3></div>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-center">Stock</th>
+                            <th>Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockListTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 🛍️ TAB: ORDERS -->
+        <section id="view-orders" class="hidden-view fade-in">
+            <div class="mb-8">
+                <h2 class="text-2xl font-display font-semibold text-zinc-900">Orders</h2>
+                <p class="text-sm text-zinc-500 mt-1">Process and track customer orders.</p>
+            </div>
+            <div class="table-wrapper">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>Order Details</th>
+                            <th>Customer Info</th>
+                            <th>Items</th>
+                            <th>Total (₹)</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderListTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 👥 TAB: USERS -->
+        <section id="view-users" class="hidden-view fade-in">
+            <div class="mb-8">
+                <h2 class="text-2xl font-display font-semibold text-zinc-900">Customers</h2>
+                <p class="text-sm text-zinc-500 mt-1">View registered customers and their carts.</p>
+            </div>
+            <div class="table-wrapper">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Customer</th>
+                            <th class="text-center">Visits</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userListTable"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 📢 TAB: BROADCASTS -->
+        <section id="view-broadcast" class="hidden-view fade-in">
+            <div class="mb-8">
+                <h2 class="text-2xl font-display font-semibold text-zinc-900">Broadcasts</h2>
+                <p class="text-sm text-zinc-500 mt-1">Send promotional emails or announcements to all registered customers.</p>
+            </div>
+            
+            <div class="bg-white border border-zinc-200 rounded-xl p-6 md:p-8 max-w-3xl">
+                <form id="promoForm" class="space-y-5">
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Campaign Title</label>
+                        <input type="text" id="promoTitle" required class="admin-input" placeholder="e.g. End of Season Sale!">
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-2 block">Banner Image (Optional)</label>
+                        <div class="upload-zone" onclick="document.getElementById('promoFileInput').click()" id="promoUploadZone">
+                            <i class="fas fa-image text-2xl text-zinc-400 mb-2 block"></i>
+                            <span class="text-sm text-zinc-500">Click to upload banner image</span>
+                            <input type="file" id="promoFileInput" accept="image/*" class="hidden" onchange="handlePromoImagePreview(event)">
+                        </div>
+                        <div id="promoPreviewCont" class="mt-3 hidden-view relative w-full h-40">
+                            <img id="promoPreview" class="w-full h-full object-cover rounded-lg border border-zinc-200">
+                            <button type="button" onclick="clearPromoImage()" class="absolute top-2 right-2 bg-white text-red-500 w-8 h-8 flex items-center justify-center rounded-full shadow hover:bg-red-50"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Message Body</label>
+                        <textarea id="promoMessage" required class="admin-input h-32 resize-none" placeholder="Write your message here..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-zinc-100">
+                        <button type="submit" id="sendPromoBtn" class="px-6 py-2.5 rounded-lg text-sm font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition-colors flex items-center gap-2">
+                            <i class="fas fa-paper-plane"></i> Send to All Customers
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <!-- 🛠️ MODAL: ADD PRODUCT -->
+    <div id="addModal" class="modal">
+        <div class="modal-content p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-display font-semibold text-zinc-900">Add Product</h2>
+                <button onclick="closeAddModal()" class="text-zinc-400 hover:text-zinc-900"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <form id="productForm" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Product Name</label>
+                        <input type="text" name="Name" required class="admin-input" placeholder="e.g. Minimalist Chair">
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Category</label>
+                        <select id="catSelect" onchange="handleCategoryChange()" class="admin-input bg-zinc-50" required>
+                            <option value="">Select Category</option>
+                        </select>
+                        <input type="text" id="newCatInput" class="admin-input mt-2 hidden-view" placeholder="New category name">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Selling Price (₹)</label>
+                        <input type="number" inputmode="numeric" name="Price" required class="admin-input">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">MRP (₹)</label>
+                        <input type="number" inputmode="numeric" name="MRP" required class="admin-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-zinc-50 p-4 rounded-lg border border-zinc-100">
+                    <div>
+                        <label class="text-xs font-medium text-zinc-500 mb-1.5 block">Material / Wood Type</label>
+                        <input type="text" name="Wood_Type" class="admin-input bg-white" placeholder="e.g. Teak">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-zinc-500 mb-1.5 block">Dimensions</label>
+                        <input type="text" name="Dimensions" class="admin-input bg-white" placeholder="e.g. 60x40 cm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-zinc-500 mb-1.5 block">Weight</label>
+                        <input type="text" name="Weight" class="admin-input bg-white" placeholder="e.g. 10 KG">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Sizes (Comma separated)</label>
+                        <input type="text" name="Size_Options" class="admin-input" placeholder="Standard, Large">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Initial Stock</label>
+                        <input type="number" inputmode="numeric" name="Stock" required class="admin-input" value="10">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-medium text-zinc-600 mb-2 block">Images (Max 5)</label>
+                    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-image text-2xl text-zinc-400 mb-2 block"></i>
+                        <span class="text-sm text-zinc-500">Click to upload images</span>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="handleImagePreview()">
+                    </div>
+                    <div id="previewGrid" class="flex flex-wrap gap-2 mt-3"></div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-medium text-zinc-600 mb-1.5 block">Description</label>
+                    <textarea name="Long_Description" required class="admin-input h-24 resize-none" placeholder="Product details..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-zinc-100">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-100 transition-colors">Cancel</button>
+                    <button type="submit" id="saveBtn" class="px-5 py-2 rounded-lg text-sm font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition-colors">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 👤 MODAL: VIEW USER DETAILS & LIVE CART -->
+    <div id="userModal" class="modal">
+        <div class="modal-content p-6 md:p-8">
+            <div class="flex justify-between items-start mb-6">
+                <div class="flex items-center gap-4">
+                    <img id="um-avatar" src="" class="w-16 h-16 rounded-full bg-zinc-100 object-cover">
+                    <div>
+                        <h2 id="um-name" class="text-xl font-display font-semibold text-zinc-900">Name</h2>
+                        <p id="um-email" class="text-sm text-zinc-500">Email</p>
+                        <p id="um-phone" class="text-xs font-medium text-zinc-900 mt-1">Phone</p>
+                    </div>
+                </div>
+                <button onclick="closeUserModal()" class="text-zinc-400 hover:text-zinc-900"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="bg-zinc-50 p-4 rounded-lg border border-zinc-100">
+                    <p class="text-xs font-medium text-zinc-500 mb-2">Address</p>
+                    <p id="um-address" class="text-sm text-zinc-900 leading-relaxed">No address saved.</p>
+                </div>
+                <div class="bg-zinc-50 p-4 rounded-lg border border-zinc-100">
+                    <p class="text-xs font-medium text-zinc-500 mb-2">Activity</p>
+                    <div class="space-y-1 text-sm">
+                        <div class="flex justify-between text-zinc-600"><span>Logins:</span> <span id="um-visits" class="font-medium text-zinc-900">0</span></div>
+                        <div class="flex justify-between text-zinc-600"><span>Device:</span> <span id="um-device" class="font-medium text-zinc-900 truncate max-w-[100px]">Unknown</span></div>
+                        <div class="flex justify-between text-zinc-600"><span>Updates:</span> <span id="um-updates" class="font-medium text-zinc-900">0/5</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-sm font-medium text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Active Cart</h3>
+                <div id="um-cart" class="space-y-2 max-h-40 overflow-y-auto pr-2"></div>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-medium text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Order History</h3>
+                <div id="um-orders" class="space-y-2 max-h-40 overflow-y-auto pr-2"></div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-zinc-100">
+                <h3 class="text-sm font-medium text-zinc-900 mb-3">Direct Message</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="um-message" class="admin-input" placeholder="Type a message to this customer...">
+                    <button onclick="sendUserMessage()" class="bg-zinc-900 text-white px-5 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors flex-shrink-0 flex items-center gap-2"><i class="fas fa-paper-plane"></i> Send</button>
+                </div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-zinc-100 text-right">
+                <p class="text-xs text-zinc-500">Vault ID: <span id="um-vaultid" class="font-mono text-zinc-900">N/A</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 🗑️ MODAL: CONFIRM DELETE -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content p-6 md:p-8" style="max-width: 400px; text-align: center;">
+            <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash-alt text-2xl text-red-600"></i>
+            </div>
+            <h2 class="text-xl font-display font-semibold text-zinc-900 mb-2">Delete Product</h2>
+            <p class="text-sm text-zinc-500 mb-6" id="deleteModalMsg">Are you sure you want to delete this product? You can restore it later.</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-zinc-600 hover:bg-zinc-100 transition-colors w-full">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors w-full">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🗑️ MODAL: MANAGE CATEGORIES -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content p-6 md:p-8" style="max-width: 500px;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-display font-semibold text-zinc-900">Manage Categories</h2>
+                <button onclick="closeManageCategoryModal()" class="text-zinc-400 hover:text-zinc-900"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-3 max-h-64 overflow-y-auto" id="categoryListContainer">
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚙️ JAVASCRIPT CORE LOGIC -->
+    <script>
+        // 🔒 SECURITY LOGIC (Strictly accepting ONLY 7314)
+        const ADMIN_PASS = "7314";
+        let failedAttempts = parseInt(localStorage.getItem('pt_attempts')) || 0;
+
+        function initSecurity() {
+            if(sessionStorage.getItem('pt_unlocked') === 'true') {
+                document.getElementById('adminLockScreen').style.display = 'none';
+            } else {
+                checkLockout();
+            }
+        }
+
+        function checkLockout() {
+            let lockoutTime = localStorage.getItem('pt_lockout_time');
+            if (lockoutTime) {
+                let timeLeft = parseInt(lockoutTime) - Date.now();
+                if (timeLeft > 0) {
+                    applyLockdown(timeLeft);
+                } else {
+                    resetSecurity();
+                }
+            }
+        }
+
+        function resetSecurity() {
+            localStorage.removeItem('pt_lockout_time');
+            localStorage.setItem('pt_attempts', '0');
+            failedAttempts = 0;
+            document.getElementById('adminPasscode').disabled = false;
+            document.getElementById('unlockBtn').disabled = false;
+            document.getElementById('lockoutMsg').innerText = '';
+        }
+
+        function applyLockdown(ms) {
+            document.getElementById('adminPasscode').disabled = true;
+            document.getElementById('unlockBtn').disabled = true;
+            
+            let seconds = Math.ceil(ms / 1000);
+            let timer = setInterval(() => {
+                let m = Math.floor(seconds / 60);
+                let s = seconds % 60;
+                document.getElementById('lockoutMsg').innerHTML = `<i class="fas fa-ban"></i> Vault Locked! Wait ${m}m ${s}s`;
+                seconds--;
+                if(seconds < 0) {
+                    clearInterval(timer);
+                    resetSecurity();
+                }
+            }, 1000);
+        }
+
+        function checkPasscode() {
+            let val = document.getElementById('adminPasscode').value;
+            // ONLY accepting exact 7314
+            if (val === ADMIN_PASS) { 
+                sessionStorage.setItem('pt_unlocked', 'true');
+                resetSecurity();
+                let lockScreen = document.getElementById('adminLockScreen');
+                lockScreen.style.opacity = '0';
+                setTimeout(() => lockScreen.style.display = 'none', 400);
+                if(typeof showToast === 'function') {
+                    showToast("Vault unlocked successfully!", "success");
+                }
+            } else {
+                failedAttempts++;
+                localStorage.setItem('pt_attempts', failedAttempts);
+                if (failedAttempts >= 5) {
+                    let lockUntil = Date.now() + (5 * 60 * 1000); // 5 mins
+                    localStorage.setItem('pt_lockout_time', lockUntil);
+                    applyLockdown(5 * 60 * 1000);
+                } else {
+                    document.getElementById('lockoutMsg').innerText = `❌ Incorrect PIN! ${5 - failedAttempts} attempts left.`;
+                    document.getElementById('adminPasscode').value = '';
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', initSecurity);
+
+        // ==========================================
+        // 🔥 MASTER URL INTEGRATED SUCCESSFULLY
+        // ==========================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxHv-gnWb0HxtNCAvLsCloLW166BvEDllVPwGDCzZgEuxJ6S2agKtku16RNuuIz1JPtJg/exec"; 
+        const TOKEN = "PT_SECURE_2026";
+        
+        let allData = { products: [], orders: [], users: [], carts: [], categories: [] };
+        let tempFiles = [];
+        let toastTimeout;
+
+        // 🔥 SHANDAR CUSTOM TOAST
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast-container');
+            const iconWrap = document.getElementById('toast-icon');
+            const title = document.getElementById('toast-title');
+            
+            clearTimeout(toastTimeout);
+            
+            if(type === "success") {
+                iconWrap.className = "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg bg-green-100 text-green-600";
+                iconWrap.innerHTML = '<i class="fas fa-check"></i>';
+                title.innerText = "Success";
+            } else if (type === "error") {
+                iconWrap.className = "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg bg-red-100 text-red-600";
+                iconWrap.innerHTML = '<i class="fas fa-exclamation"></i>';
+                title.innerText = "Error";
+            } else {
+                iconWrap.className = "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg bg-blue-100 text-zinc-900";
+                iconWrap.innerHTML = '<i class="fas fa-info"></i>';
+                title.innerText = "Information";
+            }
+            
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => { hideToast(); }, 4000);
+        }
+        function hideToast() { document.getElementById('toast-container').classList.remove('show'); }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        // 🔥 IMAGE CONVERTER
+        function extractAllImages(urlStr) {
+            if (!urlStr || typeof urlStr !== 'string') return ['https://i.ibb.co/G4xsrr6j/qafx-Ln-R-md.png'];
+            if (urlStr.startsWith('data:image')) {
+                let parts = []; let regex = /(https?:\/\/[^\s,]+|data:image\/[^;]+;base64,[a-zA-Z0-9+/=]+)/g;
+                let match; while ((match = regex.exec(urlStr)) !== null) { parts.push(match[0]); }
+                if(parts.length > 0) return parts;
+            }
+            return urlStr.split(',').map(s => s.trim());
+        }
+
+        function extractDirectImageUrl(urlStr) {
+            let urls = extractAllImages(urlStr); let firstUrl = urls[0];
+            if (firstUrl.includes('drive.google.com')) {
+                let fileId = null;
+                if (firstUrl.includes('id=')) fileId = firstUrl.split('id=')[1].split('&')[0];
+                else if (firstUrl.includes('/d/')) fileId = firstUrl.split('/d/')[1].split('/')[0];
+                if (fileId) return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+            }
+            return firstUrl; 
+        }
+
+        // 🔥 ADDRESS FORMATTER
+        function formatAddress(u) {
+            if (!u) return 'No Address Provided';
+            try {
+                let addrs = JSON.parse(u.Addresses_JSON || u.Address || "[]");
+                if (Array.isArray(addrs) && addrs.length > 0) {
+                    let a = addrs[0]; 
+                    return `${a.l1 || ''}, ${a.l2 ? a.l2+', ' : ''}${a.city || ''}, ${a.state || ''} - ${a.pin || ''}`;
+                }
+            } catch(e) {}
+            return u.Address || 'No Address Provided';
+        }
+
+        // --- 🚀 SILENT SYNC & INITIAL LOAD ---
+        async function silentSync() {
+            showToast("Syncing data securely...", "info");
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const [resP, resO, resU, resC, resCat] = await Promise.all([
+                    fetch(`${SCRIPT_URL}?action=getProducts&token=${TOKEN}`).then(r => r.json()),
+                    fetch(`${SCRIPT_URL}?action=readUniversal&sheetName=Orders&token=${TOKEN}`).then(r => r.json()),
+                    fetch(`${SCRIPT_URL}?action=readUniversal&sheetName=Users&token=${TOKEN}`).then(r => r.json()),
+                    fetch(`${SCRIPT_URL}?action=readUniversal&sheetName=Carts&token=${TOKEN}`).then(r => r.json()),
+                    fetch(`${SCRIPT_URL}?action=readUniversal&sheetName=Categories&token=${TOKEN}`).then(r => r.json())
+                ]);
+                
+                allData.products = Array.isArray(resP) ? resP : [];
+                allData.orders = Array.isArray(resO) ? resO : [];
+                allData.users = Array.isArray(resU) ? resU : [];
+                allData.carts = Array.isArray(resC) ? resC : [];
+                allData.categories = Array.isArray(resCat) ? resCat : [];
+                
+                populateCategories();
+                renderDashboard(); 
+                renderInventory(); 
+                renderStock(); 
+                renderOrders(); 
+                renderUsers();
+                showToast("Vault Synced Successfully!", "success");
+            } catch(e) { 
+                showToast("Sync failed. Check connection.", "error"); 
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        window.onload = silentSync;
+
+        // 🔥 SMART CATEGORY DROPDOWN
+        function populateCategories() {
+            let cats = [...new Set(allData.products.map(p => p.Category))].filter(Boolean);
+            if(allData.categories && allData.categories.length > 0) {
+                const catNames = allData.categories.map(c => c.Name || c.CategoryName || c.Category).filter(Boolean);
+                cats = [...new Set([...cats, ...catNames])];
+            }
+            allData.activeCategories = cats;
+
+            const select = document.getElementById('catSelect');
+            
+            select.innerHTML = '<option value="">-- Select Existing Category --</option>';
+            cats.forEach(c => { select.innerHTML += `<option value="${c}">${c}</option>`; });
+            select.innerHTML += `<option value="NEW" class="font-bold text-zinc-900">+ 🆕 Create New Category</option>`;
+        }
+
+        function handleCategoryChange() {
+            const select = document.getElementById('catSelect');
+            const input = document.getElementById('newCatInput');
+            if (select.value === 'NEW') {
+                input.classList.remove('hidden-view'); input.setAttribute('required', 'true');
+            } else {
+                input.classList.add('hidden-view'); input.removeAttribute('required');
+            }
+        }
+        
+        function openManageCategoryModal() {
+            const container = document.getElementById('categoryListContainer');
+            if (!allData.activeCategories || allData.activeCategories.length === 0) {
+                container.innerHTML = '<p class="text-sm text-zinc-500">No categories found.</p>';
+            } else {
+                container.innerHTML = allData.activeCategories.map(c => `
+                    <div class="flex justify-between items-center bg-zinc-50 border border-zinc-200 rounded-lg p-3">
+                        <span class="text-sm font-medium text-zinc-900">${c}</span>
+                        <button onclick="confirmDeleteCategory('${c}')" class="text-red-600 hover:bg-red-50 p-2 rounded-md transition-colors"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('categoryModal').classList.add('active');
+        }
+        
+        function closeManageCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('active');
+        }
+
+        // 🔥 LIVE SEARCH LOGIC
+        function searchInventoryGrid() {
+            let q = document.getElementById('searchInventory').value.toLowerCase();
+            let filtered = allData.products.filter(p => p.Name.toLowerCase().includes(q) || (p.Category && p.Category.toLowerCase().includes(q)) || p.ID.toLowerCase().includes(q));
+            renderInventory(filtered);
+        }
+
+        function searchStockTable() {
+            let q = document.getElementById('searchStock').value.toLowerCase();
+            let filtered = allData.products.filter(p => p.Name.toLowerCase().includes(q) || (p.Category && p.Category.toLowerCase().includes(q)) || p.ID.toLowerCase().includes(q));
+            renderStock(filtered);
+        }
+
+        // --- 📊 RENDERERS ---
+        function renderDashboard() {
+            const activeProducts = allData.products.filter(p => p.Status !== 'Deleted');
+            document.getElementById('stat-products').innerText = activeProducts.length;
+            document.getElementById('stat-orders').innerText = allData.orders.filter(o => o.Status === 'Pending').length;
+            document.getElementById('stat-users').innerText = allData.users.length;
+            
+            const rev = allData.orders.filter(o => o.Status !== 'Cancelled').reduce((sum, o) => sum + Number(o.Amount || 0), 0);
+            document.getElementById('stat-revenue').innerText = rev.toLocaleString('en-IN');
+            document.getElementById('userCountBadge').innerText = allData.users.length;
+
+            const recentOrders = [...allData.orders].reverse().slice(0, 6);
+            if(recentOrders.length === 0) {
+                document.getElementById('recentOrdersTable').innerHTML = `<tr><td colspan="4" class="p-5 text-center text-zinc-500 font-bold">No recent orders.</td></tr>`;
+            } else {
+                document.getElementById('recentOrdersTable').innerHTML = recentOrders.map(o => {
+                    let u = allData.users.find(x => x.Email === o.Email);
+                    let address = o.Delivery_Address || formatAddress(u); 
+                    let name = u && u.Name ? u.Name : 'Guest';
+                    return `
+                    <tr class="hover:bg-zinc-50 transition-colors">
+                        <td class="py-3 px-4">
+                            <p class="font-mono text-xs font-medium text-zinc-900">${o.Order_ID}</p>
+                            <p class="text-xs text-zinc-500 mt-0.5">${new Date(o.Date).toLocaleDateString()}</p>
+                        </td>
+                        <td class="py-3 px-4 min-w-[200px]">
+                            <p class="text-sm font-medium text-zinc-900">${name}</p>
+                            <p class="text-xs text-zinc-500 mt-1"><i class="fas fa-map-marker-alt text-red-500"></i> ${address}</p>
+                        </td>
+                        <td class="py-3 px-4 font-medium text-zinc-900">₹${o.Amount}</td>
+                        <td class="py-3 px-4"><span class="status-badge ${getStatusClass(o.Status)}">${o.Status}</span></td>
+                    </tr>
+                `;}).join('');
+            }
+        }
+
+        function renderInventory(dataList = allData.products) {
+            const grid = document.getElementById('inventoryGrid');
+            const activeProducts = dataList.filter(p => p.Status !== 'Deleted');
+            
+            if(activeProducts.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10"><p class="text-zinc-500 font-bold">No products found.</p></div>`;
+                return;
+            }
+            grid.innerHTML = activeProducts.map((p, idx) => `
+                <div class="bg-white border border-zinc-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col fade-in relative group" style="animation-delay: ${(idx%10)*50}ms">
+                    <button onclick="confirmPermDeleteProduct('${p.ID}')" class="absolute top-6 right-6 bg-white border border-zinc-200 text-red-600 p-2 rounded-full shadow-sm hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity z-10" title="Permanently Delete Product"><i class="fas fa-trash-alt"></i></button>
+                    <img src="${extractDirectImageUrl(p.Image_URL)}" class="w-full h-48 object-cover rounded-lg mb-4 bg-zinc-50 border border-zinc-100" onerror="this.src='https://via.placeholder.com/300'">
+                    <div class="px-1 flex-1 flex flex-col">
+                        <p class="text-xs font-medium text-zinc-500 mb-1">${p.Category || 'Product'}</p>
+                        <h4 class="font-semibold text-zinc-900 line-clamp-1 mb-3 text-base">${p.Name}</h4>
+                        <div class="flex justify-between items-end border-t border-zinc-100 pt-3 mt-auto">
+                            <div><span class="text-xs text-zinc-500 block">Price</span><span class="font-semibold text-lg text-zinc-900">₹${p.Price}</span></div>
+                            <div class="text-right"><span class="text-xs text-zinc-500 block">Status</span><span class="text-xs font-medium ${p.Status === 'Hidden' ? 'text-red-600 bg-red-50' : 'text-green-700 bg-green-50'} px-2 py-1 rounded-md border ${p.Status === 'Hidden' ? 'border-red-100' : 'border-green-100'}">${p.Status === 'Hidden' ? 'Hidden' : 'Visible'}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderStock(dataList = allData.products) {
+            const table = document.getElementById('stockListTable');
+            let active = 0, outOfStock = 0, incoming = 0;
+            
+            allData.products.forEach(p => {
+                if(p.Status !== 'Deleted') {
+                    if(p.Status === 'Incoming') incoming++;
+                    else if(Number(p.Stock) <= 0) outOfStock++;
+                    else active++;
+                }
+            });
+
+            if(dataList.length === 0) {
+                table.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-zinc-500 font-bold">No products found.</td></tr>`;
+            } else {
+                table.innerHTML = dataList.map(p => {
+                    let stockNum = Number(p.Stock) || 0; let isDeleted = p.Status === 'Deleted'; let currentStatus = p.Status || 'Visible';
+                    return `
+                    <tr class="${isDeleted ? 'opacity-50 bg-zinc-50' : 'hover:bg-zinc-50'} transition-colors">
+                        <td class="py-3 px-4 flex items-center gap-4 min-w-[250px]">
+                            <img src="${extractDirectImageUrl(p.Image_URL)}" class="w-10 h-10 rounded-lg object-cover border border-zinc-200" onerror="this.src='https://via.placeholder.com/100'">
+                            <div>
+                                <span class="font-medium text-sm text-zinc-900 block truncate max-w-[200px]">${p.Name}</span>
+                                <span class="text-xs text-zinc-500 block mt-0.5">${p.ID}</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <input type="number" inputmode="numeric" id="edit-stock-${p.ID}" value="${stockNum}" class="admin-input py-1.5 px-2 w-20 text-center text-sm font-semibold mx-auto" ${isDeleted ? 'disabled' : ''}>
+                        </td>
+                        <td class="p-4 min-w-[150px]">
+                            <select id="edit-status-${p.ID}" class="admin-input py-1.5 px-2 text-xs cursor-pointer ${isDeleted ? 'hidden-view' : ''}">
+                                <option value="Visible" ${currentStatus==='Visible'?'selected':''}>🟢 Live (Visible)</option>
+                                <option value="Incoming" ${currentStatus==='Incoming'?'selected':''}>🟠 Coming Soon</option>
+                                <option value="Hidden" ${currentStatus==='Hidden'?'selected':''}>🔴 Hidden</option>
+                            </select>
+                            ${isDeleted ? '<span class="text-red-500 font-medium text-[10px] uppercase tracking-widest bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 block text-center"><i class="fas fa-trash-alt mr-1"></i> Deleted</span>' : ''}
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                ${isDeleted ? `
+                                    <button onclick="restoreProduct('${p.ID}')" class="bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-green-100 transition shadow-sm flex items-center active:scale-90"><i class="fas fa-undo-alt mr-2"></i> Restore</button>
+                                    <button onclick="confirmPermDeleteProduct('${p.ID}')" class="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-red-100 transition shadow-sm flex items-center active:scale-90 ml-2" title="Permanently Delete"><i class="fas fa-ban"></i></button>
+                                ` : `
+                                    <button onclick="saveStock('${p.ID}')" class="bg-zinc-100 border border-zinc-200 text-zinc-700 w-8 h-8 rounded-md text-sm hover:bg-zinc-200 transition flex items-center justify-center" title="Save Changes"><i class="fas fa-save"></i></button>
+                                    <button onclick="deleteProduct('${p.ID}')" class="bg-orange-50 border border-orange-200 text-orange-600 w-8 h-8 rounded-md text-sm hover:bg-orange-100 transition flex items-center justify-center" title="Soft Delete Product"><i class="fas fa-trash"></i></button>
+                                `}
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            document.getElementById('stock-active').innerText = active;
+            document.getElementById('stock-out').innerText = outOfStock;
+            document.getElementById('stock-incoming').innerText = incoming;
+        }
+
+        async function saveStock(id) {
+            const newStock = document.getElementById(`edit-stock-${id}`).value;
+            const newStatus = document.getElementById(`edit-status-${id}`).value;
+            document.getElementById('loading').style.display = 'flex';
+            
+            try {
+                await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "universalUpdate", sheetName: "Products", searchCol: 0, searchValue: id, updateCol: 5, updateValue: newStock }) });
+                await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "universalUpdate", sheetName: "Products", searchCol: 0, searchValue: id, updateCol: 8, updateValue: newStatus }) });
+                
+                let pIndex = allData.products.findIndex(p => p.ID === id);
+                if(pIndex > -1) { allData.products[pIndex].Stock = newStock; allData.products[pIndex].Status = newStatus; }
+                
+                renderStock(); renderInventory(); renderDashboard();
+                showToast("Stock and status updated successfully!");
+            } catch(e) { showToast("Update failed.", "error"); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        
+        let productToDelete = null;
+        let deleteActionType = "soft"; // "soft", "perm", "category"
+        let categoryToDelete = null;
+
+        function deleteProduct(id) {
+            productToDelete = id;
+            deleteActionType = "soft";
+            document.getElementById('deleteModalMsg').innerText = "Are you sure you want to delete this product? You can restore it later.";
+            document.getElementById('deleteModal').classList.add('active');
+        }
+        
+        function confirmPermDeleteProduct(id) {
+            productToDelete = id;
+            deleteActionType = "perm";
+            document.getElementById('deleteModalMsg').innerHTML = "Are you sure you want to <span class='text-red-600 font-bold'>permanently delete</span> this product? This cannot be undone.";
+            document.getElementById('deleteModal').classList.add('active');
+        }
+        
+        function confirmDeleteCategory(cat) {
+            categoryToDelete = cat;
+            deleteActionType = "category";
+            document.getElementById('deleteModalMsg').innerHTML = `Are you sure you want to <span class='text-red-600 font-bold'>delete category '${cat}'</span>?`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            productToDelete = null;
+            categoryToDelete = null;
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            closeDeleteModal();
+            document.getElementById('loading').style.display = 'flex';
+            
+            try {
+                if (deleteActionType === "soft" && productToDelete) {
+                    await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "universalUpdate", sheetName: "Products", searchCol: 0, searchValue: productToDelete, updateCol: 8, updateValue: "Deleted" }) });
+                    let pIndex = allData.products.findIndex(p => p.ID === productToDelete);
+                    if(pIndex > -1) allData.products[pIndex].Status = "Deleted";
+                    renderStock(); renderInventory(); renderDashboard();
+                    showToast("Product softly deleted."); 
+                } 
+                else if (deleteActionType === "perm" && productToDelete) {
+                    const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "deleteProduct", productId: productToDelete }) });
+                    const result = await res.json();
+                    if(result.status === "success") {
+                        allData.products = allData.products.filter(p => p.ID !== productToDelete);
+                        renderStock(); renderInventory(); renderDashboard();
+                        showToast("Product permanently deleted.", "success");
+                    } else {
+                        showToast(result.message || "Error permanently deleting product.", "error");
+                    }
+                }
+                else if (deleteActionType === "category" && categoryToDelete) {
+                    const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "deleteCategory", categoryName: categoryToDelete }) });
+                    const result = await res.json();
+                    if(result.status === "success") {
+                        allData.categories = allData.categories.filter(c => (c.Name || c.CategoryName || c.Category) !== categoryToDelete);
+                        closeManageCategoryModal();
+                        populateCategories();
+                        showToast(`Category '${categoryToDelete}' deleted.`, "success");
+                    } else {
+                        showToast(result.message || "Error deleting category.", "error");
+                    }
+                }
+            } catch(e) { showToast("Action failed due to network error.", "error"); }
+            
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        async function restoreProduct(id) {
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ token: TOKEN, action: "universalUpdate", sheetName: "Products", searchCol: 0, searchValue: id, updateCol: 8, updateValue: "Visible" }) });
+                let pIndex = allData.products.findIndex(p => p.ID === id);
+                if(pIndex > -1) allData.products[pIndex].Status = "Visible";
+                renderStock(); renderInventory(); renderDashboard();
+                showToast("Product restored successfully!");
+            } catch(e) { showToast("Error restoring product.", "error"); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function renderOrders() {
+            const table = document.getElementById('orderListTable');
+            if(allData.orders.length === 0) {
+                table.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-zinc-500 font-bold text-lg"><i class="fas fa-box-open text-4xl mb-3 text-zinc-300 block"></i> No orders found.</td></tr>`;
+                return;
+            }
+            table.innerHTML = allData.orders.reverse().map(o => {
+                let u = allData.users.find(x => x.Email === o.Email);
+                let address = o.Delivery_Address || formatAddress(u);
+                let phone = u && u.Phone ? u.Phone : 'No Phone';
+                let name = u && u.Name ? u.Name : 'Guest';
+
+                return `
+                <tr class="hover:bg-zinc-50 transition-colors">
+                    <td class="py-3 px-4 font-mono text-xs font-medium text-zinc-900 whitespace-nowrap">
+                        ${o.Order_ID}<br><span class="text-zinc-500 text-xs mt-1 block">${new Date(o.Date).toLocaleDateString()}</span>
+                    </td>
+                    <td class="py-3 px-4 min-w-[200px]">
+                        <p class="text-sm font-medium text-zinc-900 mb-1">${name} <span class="text-xs text-zinc-500 font-normal">(${o.Email})</span></p>
+                        <p class="text-xs text-zinc-600 mt-1"><i class="fas fa-phone text-zinc-900 mr-1"></i> ${phone}</p>
+                        <p class="text-xs text-zinc-600 mt-1"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i> ${address}</p>
+                    </td>
+                    <td class="py-3 px-4 text-sm text-zinc-800 min-w-[150px]" title="${o.Items}">${o.Items}</td>
+                    <td class="py-3 px-4 font-medium text-zinc-900 whitespace-nowrap">₹${o.Amount}</td>
+                    <td class="py-3 px-4 text-center min-w-[120px]">
+                        <div class="flex flex-col gap-2 w-full max-w-[120px] mx-auto">
+                            <select onchange="updateOrderStatus('${o.Order_ID}', this.value)" class="admin-input py-1.5 px-2 text-xs cursor-pointer shadow-sm w-full ${getStatusClass(o.Status)}">
+                                <option value="Pending" ${o.Status==='Pending'?'selected':''}>Pending</option>
+                                <option value="Processing" ${o.Status==='Processing'?'selected':''}>Processing</option>
+                                <option value="Delivered" ${o.Status==='Delivered'?'selected':''}>Delivered</option>
+                                <option value="Cancelled" ${o.Status==='Cancelled'?'selected':''}>Cancelled</option>
+                            </select>
+                            <button onclick="printOrderSlip('${o.Order_ID}')" class="bg-zinc-100 text-zinc-900 border border-zinc-200 py-1.5 px-3 rounded-md text-xs font-medium hover:bg-zinc-200 transition shadow-sm w-full flex items-center justify-center gap-1 mt-2">
+                                <i class="fas fa-print"></i> Print Slip
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // 🔥 ULTIMATE CRASH-PROOF PRINTING BUG FIXED
+        function printOrderSlip(orderId) {
+            let o = allData.orders.find(x => x.Order_ID === orderId); if(!o) return;
+            let u = allData.users.find(x => x.Email === o.Email);
+            let address = o.Delivery_Address || formatAddress(u); 
+            let phone = u && u.Phone ? u.Phone : 'N/A'; 
+            let name = u && u.Name ? u.Name : 'N/A';
+            
+            const printArea = document.getElementById('printSection');
+            
+            // Format Items correctly instead of using missing frontend variables
+            let itemsHtml = o.Items ? o.Items.split('|').map(item => `<tr><td style="padding: 12px 10px; border-bottom: 1px solid #eee;">${item.trim()}</td></tr>`).join('') : '<tr><td>No items data found</td></tr>';
+
+            printArea.innerHTML = `
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #111;">
+                    <div style="border: 2px solid #111; padding: 30px; border-radius: 16px; max-width: 600px; margin: auto;">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h2 style="margin-top:0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">PATEL TRADERS</h2>
+                            <p style="font-size: 14px; color: #555; text-transform: uppercase; letter-spacing: 1px;">Official Delivery Slip</p>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;"><strong>Order ID:</strong> <span>${orderId}</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;"><strong>Date:</strong> <span>${new Date(o.Date).toLocaleString()}</span></div>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                        <h3 style="text-transform: uppercase; font-size: 14px; color: #666;">Customer Details</h3>
+                        <p style="font-size: 18px; font-weight: bold; margin: 5px 0;">${name}</p>
+                        <p style="margin: 5px 0;"><strong>Phone:</strong> ${phone}</p>
+                        <p style="margin: 5px 0; line-height: 1.5;"><strong>Delivery Address:</strong> ${address}</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                        <h3 style="text-transform: uppercase; font-size: 14px; color: #666;">Order Items</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+                            ${itemsHtml}
+                        </table>
+                        <div style="font-size: 24px; font-weight: 900; margin-top: 30px; border-top: 2px dashed #ccc; padding-top: 15px;">Total Amount: ₹${o.Amount}</div>
+                        <p style="text-align: center; margin-top: 40px; font-size: 12px; color: #888;">Thank you for shopping with Patel Traders.</p>
+                    </div>
+                </div>
+            `;
+            
+            setTimeout(() => { window.print(); }, 200); 
+        }
+
+        function renderUsers() {
+            const table = document.getElementById('userListTable');
+            const validUsers = allData.users.filter(u => u.Email);
+            if(validUsers.length === 0) {
+                table.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-zinc-500 font-bold">No users registered yet.</td></tr>`;
+                return;
+            }
+            table.innerHTML = validUsers.map((u, i) => {
+                let pic = u.ProfilePic || `https://ui-avatars.com/api/?name=${u.Name || 'User'}&background=f4f4f7&color=0071e3`;
+                return `
+                <tr class="hover:bg-zinc-50 transition-colors fade-in" style="animation-delay: ${i*30}ms">
+                    <td class="py-3 px-4 font-mono text-xs text-zinc-500 whitespace-nowrap">${u.UserID || 'N/A'}</td>
+                    <td class="py-3 px-4 min-w-[200px]">
+                        <div class="flex items-center gap-3">
+                            <img src="${pic}" class="w-9 h-9 rounded-full border border-zinc-200 object-cover">
+                            <div><p class="font-medium text-sm text-zinc-900">${u.Name || 'Guest User'}</p><p class="text-xs text-zinc-500">${u.Email}</p></div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap"><span class="bg-zinc-100 text-zinc-700 px-2.5 py-1 rounded border border-zinc-200 text-xs font-medium">${u.Visits || 0}</span></td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap"><button onclick="openUserModal('${u.Email}')" class="bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-900 px-3 py-1.5 rounded-md text-xs font-medium transition shadow-sm flex items-center justify-center mx-auto gap-2"><i class="fas fa-eye"></i> View Vault</button></td>
+                </tr>
+            `}).join('');
+        }
+
+        // --- 👤 USER MODAL LOGIC ---
+        function openUserModal(email) {
+            const u = allData.users.find(x => x.Email === email); if(!u) return;
+            
+            document.getElementById('um-avatar').src = u.ProfilePic || `https://ui-avatars.com/api/?name=${u.Name || 'User'}&background=f4f4f7&color=0071e3&size=128`;
+            
+            document.getElementById('um-name').innerText = u.Name || 'Guest User';
+            document.getElementById('um-email').innerText = u.Email;
+            document.getElementById('um-phone').innerText = u.Phone || 'No Phone Number';
+            document.getElementById('um-address').innerText = formatAddress(u);
+            document.getElementById('um-visits').innerText = u.Visits || 0;
+            document.getElementById('um-device').innerText = u.Device ? u.Device.substring(0, 25) + "..." : 'Unknown';
+            document.getElementById('um-updates').innerText = `${u.UpdateCount || 0}/5`;
+            document.getElementById('um-vaultid').innerText = u.VaultID || 'Pending';
+
+            const cObj = allData.carts.find(c => c.Email === email);
+            const cartDiv = document.getElementById('um-cart');
+            cartDiv.innerHTML = '';
+            if(cObj && cObj.CartJSON && cObj.CartJSON !== "[]") {
+                try {
+                    let cartItems = JSON.parse(cObj.CartJSON);
+                    cartDiv.innerHTML = cartItems.map(item => `<div class="flex justify-between items-center bg-zinc-50 p-3 rounded-lg border border-zinc-100 shadow-sm"><div class="flex items-center gap-3"><img src="${extractDirectImageUrl(item.Image_URL)}" class="w-10 h-10 rounded-lg object-cover border border-zinc-200" onerror="this.src='https://via.placeholder.com/100'"><div><p class="text-sm font-medium text-zinc-900">${item.Name} <span class="text-[9px] bg-white px-1.5 py-0.5 border rounded text-zinc-500 uppercase">${item.size||'STD'}</span></p><p class="text-[10px] text-zinc-500 font-medium mt-1">₹${item.Price} <span class="text-black font-bold">x ${item.qty}</span></p></div></div><span class="font-medium text-zinc-900 text-sm">₹${item.Price * item.qty}</span></div>`).join('');
+                } catch(e) { cartDiv.innerHTML = '<p class="text-xs text-red-500 font-bold bg-red-50 p-3 rounded-lg">Error parsing cart data.</p>'; }
+            } else { cartDiv.innerHTML = '<p class="text-xs text-zinc-500 font-medium bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-center">Customer cart is currently empty.</p>'; }
+
+            const userOrders = allData.orders.filter(o => o.Email === email);
+            const orderDiv = document.getElementById('um-orders');
+            if(userOrders.length > 0) {
+                orderDiv.innerHTML = userOrders.reverse().map(o => `<div class="bg-zinc-50 p-3 rounded-lg border border-zinc-100 shadow-sm flex justify-between items-center"><div class="flex-1 pr-3"><p class="text-[9px] font-mono text-zinc-400 font-bold mb-1">${o.Order_ID}</p><p class="text-[11px] font-bold text-zinc-900 line-clamp-2" title="${o.Items}">${o.Items}</p></div><span class="status-badge ${getStatusClass(o.Status)}">${o.Status}</span></div>`).join('');
+            } else { orderDiv.innerHTML = '<p class="text-xs text-zinc-500 font-medium bg-zinc-50 p-4 rounded-lg border border-zinc-100 text-center">No orders placed yet.</p>'; }
+
+            document.getElementById('userModal').classList.add('active');
+        }
+        function closeUserModal() { document.getElementById('userModal').classList.remove('active'); }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            document.getElementById('loading').style.display = 'flex'; 
+            try {
+                // BUG FIX: Using the dedicated backend action 'updateOrderStatus'
+                const res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ token: TOKEN, action: "updateOrderStatus", orderId: orderId, status: newStatus })
+                });
+                const data = await res.json();
+                if(data.status === "success") {
+                    const oIndex = allData.orders.findIndex(o => o.Order_ID === orderId);
+                    if(oIndex > -1) allData.orders[oIndex].Status = newStatus;
+                    renderDashboard(); renderOrders();
+                    showToast(`Order ${orderId} updated to ${newStatus}`);
+                } else { showToast("Failed to update status. Check backend.", "error"); }
+            } catch(e) { showToast("Network error while updating.", "error"); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // --- 📸 DIRECT UPLOAD & ADD PRODUCT (BUG FIXED: SMART DYNAMIC COLUMNS) ---
+        function handleImagePreview() {
+            const grid = document.getElementById('previewGrid');
+            const files = document.getElementById('fileInput').files;
+            grid.innerHTML = ""; tempFiles = Array.from(files);
+            
+            if(tempFiles.length > 5) {
+                showToast("Maximum 5 images allowed.", "error");
+                tempFiles = tempFiles.slice(0, 5);
+            }
+            
+            tempFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => { grid.innerHTML += `<div class="relative fade-in-up"><img src="${e.target.result}" class="w-16 h-16 object-cover rounded-lg border border-zinc-200 shadow-sm"></div>`; };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        const toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result); reader.onerror = error => reject(error);
+        });
+
+        document.getElementById('productForm').onsubmit = async (e) => {
+            e.preventDefault();
+            if(tempFiles.length === 0) { showToast("Please select at least one product image!", "error"); return; }
+
+            let finalCategory = document.getElementById('catSelect').value;
+            if (finalCategory === 'NEW') {
+                finalCategory = document.getElementById('newCatInput').value.trim();
+                if(!finalCategory) return showToast("Please enter a category name!", "error");
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+            
+            try {
+                let uploadedUrls = [];
+                for(let i=0; i < tempFiles.length; i++) {
+                    const file = tempFiles[i];
+                    const base64 = await toBase64(file);
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST", body: JSON.stringify({ token: TOKEN, action: "uploadImage", filename: "PT_" + Date.now() + "_" + i + ".png", mimeType: file.type, base64: base64.split(',')[1] })
+                    });
+                    const data = await res.json();
+                    if(data.status === "success") uploadedUrls.push(data.url);
+                }
+
+                const formData = new FormData(e.target);
+                const p = Object.fromEntries(formData.entries());
+                const shortDesc = p.Long_Description ? p.Long_Description.substring(0, 50) + "..." : "Premium Quality Furniture";
+                
+                // 🔥 BUG FIX: Using universalWriteDynamic to prevent missing columns
+                let payloadObj = {
+                    ID: "PT-" + Date.now(),
+                    Name: p.Name,
+                    Category: finalCategory,
+                    Price: p.Price,
+                    MRP: p.MRP,
+                    Stock: p.Stock,
+                    Image_URL: uploadedUrls.join(','),
+                    Description: shortDesc,
+                    Status: "Visible",
+                    Wood_Type: p.Wood_Type || "",
+                    Dimensions: p.Dimensions || "",
+                    Weight: p.Weight || "",
+                    Size_Options: p.Size_Options || "",
+                    Long_Description: p.Long_Description || ""
+                };
+
+                const finalRes = await fetch(SCRIPT_URL, { 
+                    method: "POST", 
+                    body: JSON.stringify({ 
+                        token: TOKEN, 
+                        action: "universalWriteDynamic", 
+                        sheetName: "Products", 
+                        payload: payloadObj 
+                    }) 
+                });
+                
+                const result = await finalRes.json();
+                
+                if(result.status === "success") { 
+                    showToast("Product successfully added to Master Vault!"); 
+                    setTimeout(() => silentSync(), 1500);
+                    closeAddModal();
+                    document.getElementById('productForm').reset();
+                    document.getElementById('newCatInput').classList.add('hidden-view');
+                    tempFiles = []; document.getElementById('previewGrid').innerHTML = '';
+                } else { 
+                    showToast("Error saving data to sheet.", "error"); 
+                    document.getElementById('loading').style.display = 'none'; 
+                }
+            } catch(e) {
+                showToast("Upload failed due to network error.", "error");
+                document.getElementById('loading').style.display = 'none'; 
+            }
+        };
+
+        // --- 📢 BROADCASTS & MESSAGES ---
+        async function sendUserMessage() {
+            const msg = document.getElementById('um-message').value.trim();
+            const email = document.getElementById('um-email').innerText;
+            if(!msg) return showToast("Please type a message", "error");
+            
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ token: TOKEN, action: "sendAdminReply", email: email, replyText: msg })
+                });
+                const data = await res.json();
+                if(data.status === "success") {
+                    showToast("Message sent successfully!");
+                    document.getElementById('um-message').value = '';
+                } else { showToast("Failed to send message.", "error"); }
+            } catch(e) { showToast("Network error.", "error"); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        let promoFile = null;
+        function handlePromoImagePreview(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            promoFile = file;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('promoUploadZone').classList.add('hidden-view');
+                document.getElementById('promoPreviewCont').classList.remove('hidden-view');
+                document.getElementById('promoPreview').src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function clearPromoImage() {
+            promoFile = null;
+            document.getElementById('promoFileInput').value = '';
+            document.getElementById('promoUploadZone').classList.remove('hidden-view');
+            document.getElementById('promoPreviewCont').classList.add('hidden-view');
+            document.getElementById('promoPreview').src = '';
+        }
+
+        document.getElementById('promoForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('promoTitle').value.trim();
+            const message = document.getElementById('promoMessage').value.trim();
+            
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                let bannerUrl = "";
+                if (promoFile) {
+                    const base64 = await toBase64(promoFile);
+                    const res = await fetch(SCRIPT_URL, {
+                        method: "POST", body: JSON.stringify({ token: TOKEN, action: "uploadImage", filename: "PROMO_" + Date.now() + ".png", mimeType: promoFile.type, base64: base64.split(',')[1] })
+                    });
+                    const data = await res.json();
+                    if(data.status === "success") bannerUrl = data.url;
+                }
+
+                const res = await fetch(SCRIPT_URL, { 
+                    method: "POST", 
+                    body: JSON.stringify({ token: TOKEN, action: "sendBulkPromo", title: title, message: message, bannerUrl: bannerUrl }) 
+                });
+                const result = await res.json();
+                
+                if(result.status === "success") { 
+                    showToast("Broadcast sent to all customers!"); 
+                    e.target.reset();
+                    clearPromoImage();
+                } else { showToast(result.message || "Failed to send.", "error"); }
+            } catch(e) { showToast("Network error.", "error"); }
+            document.getElementById('loading').style.display = 'none';
+        };
+
+        // --- UTILS ---
+        function switchTab(tabId) {
+            ['dashboard', 'inventory', 'stock', 'orders', 'users', 'broadcast'].forEach(t => {
+                document.getElementById('view-'+t).classList.add('hidden-view');
+                document.getElementById('nav-'+t).classList.remove('active');
+            });
+            document.getElementById('view-'+tabId).classList.remove('hidden-view');
+            document.getElementById('nav-'+tabId).classList.add('active');
+            if(window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+            if(tabId === 'orders' || tabId === 'stock' || tabId === 'inventory') { silentSync(); }
+        }
+        function openAddModal() { document.getElementById('addModal').classList.add('active'); }
+        function closeAddModal() { document.getElementById('addModal').classList.remove('active'); }
+        function getStatusClass(status) { return status === 'Pending' ? 'status-pending' : (status === 'Processing' ? 'status-processing' : (status === 'Delivered' ? 'status-delivered' : 'status-cancelled')); }
+    </script>
+</body>
+</html>
